@@ -5,6 +5,7 @@ header('Content-Type: text/html; charset=UTF-8');
 require_once 'includes/config.php';
 require_once 'includes/auth.php';
 require_once 'includes/functions.php';
+require_once 'includes/security.php';
 
 // Vyžaduje admin práva
 requireAdmin();
@@ -14,6 +15,8 @@ $success = false;
 $error = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // CSRF ochrana
+    requireCsrfToken();
     try {
         // Příprava dat
         $data = [
@@ -89,6 +92,7 @@ $pageTitle = 'Přidat nové měřidlo - ' . APP_NAME;
 <?php endif; ?>
 
 <form method="POST" action="add.php" class="edit-form">
+    <?php echo csrfField(); ?>
     
     <!-- Základní údaje -->
     <section>

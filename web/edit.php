@@ -5,12 +5,14 @@ header('Content-Type: text/html; charset=UTF-8');
 require_once 'includes/config.php';
 require_once 'includes/auth.php';
 require_once 'includes/functions.php';
+require_once 'includes/security.php';
 
 // Vyžaduje admin práva
 requireAdmin();
 
 // Zpracování mazání ceny přes GET (aby nenarusovalo hlavní formulář)
 if (isset($_GET['delete_cena']) && isset($_GET['delete_rok']) && isset($_GET['id'])) {
+    requireCsrfToken(); // CSRF ochrana pro DELETE akci
     $meridloId = (int)$_GET['id'];
     $rok = (int)$_GET['delete_rok'];
     if (deleteCena($meridloId, $rok)) {
@@ -26,6 +28,9 @@ $success = false;
 $error = false;
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // CSRF ochrana
+    requireCsrfToken();
+    
     try {
         $meridloId = (int)$_POST['id'];
 
@@ -122,6 +127,7 @@ $pageTitle = 'Editace měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_N
 <?php endif; ?>
 
 <form method="POST" action="edit.php?id=<?php echo $meridlo['id']; ?>" class="edit-form" id="editForm">
+    <?php echo csrfField(); ?>
     <input type="hidden" name="id" value="<?php echo $meridlo['id']; ?>">
     
     <!-- Základní údaje -->
@@ -364,7 +370,7 @@ $pageTitle = 'Editace měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_N
                                 <span class="badge-auto">Vypočítaná</span>
                             <?php endif; ?>
                             <br>
-                            <a href="edit.php?id=<?php echo $meridlo['id']; ?>&delete_cena=1&delete_rok=<?php echo $rok; ?>" 
+                            <a href="edit.php?id=<?php echo $meridlo['id']; ?>&delete_cena=1&delete_rok=<?php echo $rok; ?>&<?php echo http_build_query(['csrf_token' => generateCsrfToken()]); ?>" 
                                class="gov-button gov-button--small gov-button--secondary" 
                                style="margin-top: 0.5rem;"
                                onclick="return confirm('Opravdu smazat cenu pro rok <?php echo $rok; ?>?');">

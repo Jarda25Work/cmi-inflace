@@ -5,9 +5,13 @@ header('Content-Type: text/html; charset=UTF-8');
 require_once 'includes/config.php';
 require_once 'includes/auth.php';
 require_once 'includes/functions.php';
+require_once 'includes/security.php';
 
 // Vyžaduje admin práva
 requireAdmin();
+
+// CSRF ochrana pro DELETE akci
+requireCsrfToken();
 
 // Kontrola ID
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {

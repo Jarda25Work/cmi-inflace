@@ -5,6 +5,7 @@ header('Content-Type: text/html; charset=UTF-8');
 require_once 'includes/config.php';
 require_once 'includes/auth.php';
 require_once 'includes/functions.php';
+require_once 'includes/security.php';
 
 // Vyžaduje admin práva
 requireAdmin();
@@ -14,6 +15,9 @@ $messageType = '';
 
 // Zpracování formuláře
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // CSRF ochrana
+    requireCsrfToken();
+    
     if (isset($_POST['action'])) {
         if ($_POST['action'] === 'save') {
             $rok = (int)$_POST['rok'];
@@ -80,6 +84,7 @@ $pageTitle = 'Správa inflace - ' . APP_NAME;
         <h2 class="gov-heading--medium">Přidat/upravit inflaci</h2>
         
         <form method="POST" action="inflace.php" class="gov-form">
+            <?php echo csrfField(); ?>
             <input type="hidden" name="action" value="save">
             
             <div class="gov-form-group">
@@ -184,6 +189,7 @@ $pageTitle = 'Správa inflace - ' . APP_NAME;
                                 </button>
                                 
                                 <form method="POST" action="inflace.php" style="display: inline;" onsubmit="return confirm('Opravdu chcete smazat inflaci pro rok <?php echo $inflace['rok']; ?>?');">
+                                    <?php echo csrfField(); ?>
                                     <input type="hidden" name="action" value="delete">
                                     <input type="hidden" name="rok" value="<?php echo $inflace['rok']; ?>">
                                     <button type="submit" class="gov-button gov-button--secondary gov-button--sm">

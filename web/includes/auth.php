@@ -8,8 +8,17 @@
  */
 function initSession() {
     if (session_status() === PHP_SESSION_NONE) {
+        // Bezpečnostní nastavení session
         ini_set('session.cookie_httponly', 1);
         ini_set('session.use_only_cookies', 1);
+        ini_set('session.use_strict_mode', 1);
+        ini_set('session.cookie_samesite', 'Strict');
+        
+        // Pokud je HTTPS, nastav secure flag
+        if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
+            ini_set('session.cookie_secure', 1);
+        }
+        
         session_start();
     }
 }
@@ -65,6 +74,13 @@ function canWrite() {
  * Přihlásí uživatele
  */
 function login($username, $password) {
+    // Rate limiting
+    require_once __DIR__ . '/security.php';
+    $rateLimit = checkLoginRateLimit($username);
+    if ($rateLimit !== true) {
+        return $rateLimit; // Vrátí chybovou zprávu
+    }
+    
     $pdo = getDbConnection();
     
     $sql = "SELECT id, username, password_hash, role, full_name, active 
@@ -77,6 +93,7 @@ function login($username, $password) {
     
     // Pokud má uživatel prázdné heslo, nelze se přihlásit heslem (pouze OIDC)
     if ($user && empty($user['password_hash'])) {
+        recordFailedLogin($username);
         return false;
     }
     
@@ -93,13 +110,22 @@ function login($username, $password) {
         $_SESSION['full_name'] = mb_convert_encoding($user['full_name'] ?? $user['username'], 'UTF-8', 'UTF-8');
         $_SESSION['auth_method'] = 'password';
         
+        // Vymaž záznamy o neúspěšných pokusech
+        clearLoginAttempts($username);
+        
         // Aktualizuj last_login
         $updateSql = "UPDATE users SET last_login = NOW() WHERE id = ?";
         $updateStmt = $pdo->prepare($updateSql);
         $updateStmt->execute([$user['id']]);
         
+        // Loguj úspěšné přihlášení
+        logSecurityEvent('SUCCESSFUL_LOGIN', "Username: $username");
+        
         return true;
     }
+    
+    // Zaznamenaj neúspěšný pokus
+    recordFailedLogin($username);
     
     return false;
 }

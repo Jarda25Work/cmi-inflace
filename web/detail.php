@@ -5,6 +5,7 @@ header('Content-Type: text/html; charset=UTF-8');
 require_once 'includes/config.php';
 require_once 'includes/auth.php';
 require_once 'includes/functions.php';
+require_once 'includes/security.php';
 
 // Vyžaduje přihlášení
 requireLogin();
@@ -51,7 +52,7 @@ $pageTitle = 'Detail měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_NA
         <a href="edit.php?id=<?php echo $meridlo['id']; ?>" class="gov-button gov-button--primary">
             Editovat měřidlo
         </a>
-        <a href="delete_meridlo.php?id=<?php echo $meridlo['id']; ?>" 
+        <a href="delete_meridlo.php?id=<?php echo $meridlo['id']; ?>&<?php echo http_build_query(['csrf_token' => generateCsrfToken()]); ?>" 
            class="gov-button gov-button--error"
            onclick="return confirm('Opravdu chcete smazat toto měřidlo včetně všech jeho cen?');">
             Smazat měřidlo

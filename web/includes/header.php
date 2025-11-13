@@ -1,9 +1,14 @@
+<?php
+// Nastav bezpečnostní hlavičky
+require_once __DIR__ . '/security.php';
+setSecurityHeaders();
+?>
 <!DOCTYPE html>
 <html lang="cs">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?php echo $pageTitle ?? APP_NAME; ?></title>
+    <title><?php echo isset($pageTitle) ? e($pageTitle) . ' - ' : ''; echo e(APP_NAME); ?></title>
     
     <!-- Gov.cz Design System CSS -->
     <link rel="stylesheet" href="https://gov-design-system-next.netlify.app/dist/css/design-system.min.css">

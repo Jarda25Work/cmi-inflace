@@ -5,6 +5,7 @@ header('Content-Type: text/html; charset=UTF-8');
 require_once 'includes/config.php';
 require_once 'includes/auth.php';
 require_once 'includes/functions.php';
+require_once 'includes/security.php';
 
 // Vyžaduje admin práva
 requireAdmin();
@@ -14,6 +15,9 @@ $error = false;
 
 // Zpracování akcí
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // CSRF ochrana
+    requireCsrfToken();
+    
     try {
         if (isset($_POST['action'])) {
             switch ($_POST['action']) {
@@ -96,6 +100,7 @@ $pageTitle = 'Správa uživatelů - ' . APP_NAME;
                     <td><?php echo htmlspecialchars($user['email'] ?? '-'); ?></td>
                     <td>
                         <form method="POST" style="display: inline;">
+                            <?php echo csrfField(); ?>
                             <input type="hidden" name="action" value="change_role">
                             <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                             <select name="role" class="gov-form-control" style="width: auto; display: inline-block; padding: 0.25rem 0.5rem;" 
@@ -126,6 +131,7 @@ $pageTitle = 'Správa uživatelů - ' . APP_NAME;
                     <td>
                         <?php if ($user['id'] != $_SESSION['user_id']): ?>
                             <form method="POST" style="display: inline;">
+                                <?php echo csrfField(); ?>
                                 <input type="hidden" name="action" value="toggle_active">
                                 <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                                 <button type="submit" class="gov-button gov-button--small gov-button--secondary" 
@@ -136,6 +142,7 @@ $pageTitle = 'Správa uživatelů - ' . APP_NAME;
                             
                             <form method="POST" style="display: inline;" 
                                   onsubmit="return confirm('Opravdu chcete smazat uživatele <?php echo htmlspecialchars($user['username']); ?>?');">
+                                <?php echo csrfField(); ?>
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="user_id" value="<?php echo $user['id']; ?>">
                                 <button type="submit" class="gov-button gov-button--small gov-button--error">
