@@ -1,0 +1,45 @@
+# Sensitive configuration
+web/includes/config.php
+
+# Database exports (local only)
+*.sql
+export_db/
+export_phpmyadmin/CMI_INFLACE_EXPORT.zip
+
+# Excel temporary files
+~$*.xlsx
+~$*.xls
+
+# CSV exports
+*.csv
+
+# Python cache
+__pycache__/
+*.pyc
+
+# PowerShell scripts (development only)
+*.ps1
+
+# Python scripts (development only)
+*.py
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.bak
+*~
+
+# Working files
+TPCA_Slouceny.xlsx
+TPCA_Slouceny_Kompletni.xlsx
+CMI_INFLACE_EXPORT.zip
