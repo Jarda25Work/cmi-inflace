@@ -131,6 +131,23 @@ cmi-inflace/
 
 © 2025 CMI - Czech Metrology Institute
 
-## 👨‍💻 Autor
+## � Dokumentace
+
+Pro podrobnější informace viz:
+
+- **[SECURITY.md](SECURITY.md)** - Bezpečnostní opatření a best practices
+- **[DEPLOYMENT.md](DEPLOYMENT.md)** - Kompletní návod pro produkční nasazení
+- **[DATABASE.md](DATABASE.md)** - Databázové schéma a SQL dokumentace
+- **[CONTRIBUTING.md](CONTRIBUTING.md)** - Průvodce pro přispěvatele
+
+## �👨‍💻 Autor
 
 Vytvořeno pro CMI - Český metrologický institut
+
+## 🤝 Přispívání
+
+Příspěvky jsou vítány! Prosím přečtěte si [CONTRIBUTING.md](CONTRIBUTING.md) před odesláním pull requestu.
+
+## 🔒 Security
+
+Pokud najdete bezpečnostní chybu, nahlaste ji prosím zodpovědně. Viz [SECURITY.md](SECURITY.md) pro detaily.
