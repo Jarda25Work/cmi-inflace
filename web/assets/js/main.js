@@ -35,10 +35,13 @@ const Utils = {
         if (cena === null || cena === undefined) {
             return '-';
         }
+        const rounded = Math.round(Number(cena));
         return new Intl.NumberFormat('cs-CZ', {
             style: 'currency',
-            currency: 'CZK'
-        }).format(cena);
+            currency: 'CZK',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0
+        }).format(rounded);
     },
     
     formatDate(dateString) {

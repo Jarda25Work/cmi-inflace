@@ -325,7 +325,7 @@ function formatCena($cena) {
     if ($cena === null) {
         return '-';
     }
-    return number_format($cena, 2, ',', ' ') . ' Kč';
+    return number_format(round((float)$cena), 0, ',', ' ') . ' Kč';
 }
 
 /**
