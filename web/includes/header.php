@@ -34,6 +34,9 @@ setSecurityHeaders();
                     <li class="gov-header__nav-item">
                         <a href="users.php" class="gov-header__nav-link">Uživatelé</a>
                     </li>
+                    <li class="gov-header__nav-item">
+                        <a href="nastaveni.php" class="gov-header__nav-link">Nastavení</a>
+                    </li>
                     <?php endif; ?>
                     <li class="gov-header__nav-item">
                         <span class="gov-header__nav-link" style="cursor: default;">

@@ -457,3 +457,101 @@ function deleteUser($userId) {
     
     return $stmt->execute([$userId]);
 }
+
+/**
+ * Získá konfigurační hodnotu
+ */
+function getKonfigurace($klic, $default = null) {
+    $pdo = getDbConnection();
+    
+    $sql = "SELECT hodnota FROM konfigurace WHERE klic = ?";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$klic]);
+    
+    $result = $stmt->fetch();
+    return $result ? $result['hodnota'] : $default;
+}
+
+/**
+ * Uloží konfigurační hodnotu
+ */
+function saveKonfigurace($klic, $hodnota, $popis = null) {
+    $pdo = getDbConnection();
+    
+    $sql = "INSERT INTO konfigurace (klic, hodnota, popis)
+            VALUES (?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+                hodnota = VALUES(hodnota),
+                popis = COALESCE(VALUES(popis), popis)";
+    
+    $stmt = $pdo->prepare($sql);
+    return $stmt->execute([$klic, $hodnota, $popis]);
+}
+
+/**
+ * Vypočte teoretickou cenu pro daný rok podle inflace
+ */
+function vypocitejTeoretickouCenu($meridloId, $rok) {
+    $pdo = getDbConnection();
+    
+    $sql = "SELECT fn_get_cena(?, ?) as cena";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$meridloId, $rok]);
+    
+    $result = $stmt->fetch();
+    return $result ? (float)$result['cena'] : null;
+}
+
+/**
+ * Zjistí, zda je ručně zadaná cena odchylná od vypočtené
+ * @return array ['je_odchylna' => bool, 'vypocitana_cena' => float, 'odchylka_procent' => float]
+ */
+function zjistiOdchylkuCeny($meridloId, $rok, $rucniCena) {
+    // Získat toleranci z konfigurace
+    $tolerance = (float)getKonfigurace('cena_tolerance_procenta', 5);
+    
+    // Vypočítat teoretickou cenu
+    $vypocitanaCena = vypocitejTeoretickouCenu($meridloId, $rok);
+    
+    if ($vypocitanaCena === null || $vypocitanaCena == 0) {
+        return [
+            'je_odchylna' => false,
+            'vypocitana_cena' => null,
+            'odchylka_procent' => 0
+        ];
+    }
+    
+    // Vypočítat procentuální odchylku
+    $odchylka = abs($rucniCena - $vypocitanaCena);
+    $odchylkaProcent = ($odchylka / $vypocitanaCena) * 100;
+    
+    return [
+        'je_odchylna' => $odchylkaProcent > $tolerance,
+        'vypocitana_cena' => $vypocitanaCena,
+        'odchylka_procent' => $odchylkaProcent
+    ];
+}
+
+/**
+ * Zkontroluje, zda měřidlo má nějakou odchylnou cenu v historii
+ */
+function maOdchylneCeny($meridloId) {
+    $pdo = getDbConnection();
+    
+    // Získat všechny ručně zadané ceny
+    $sql = "SELECT rok, cena FROM ceny_meridel 
+            WHERE meridlo_id = ? AND je_manualni = 1
+            ORDER BY rok";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$meridloId]);
+    $ceny = $stmt->fetchAll();
+    
+    foreach ($ceny as $cena) {
+        $kontrola = zjistiOdchylkuCeny($meridloId, $cena['rok'], $cena['cena']);
+        if ($kontrola['je_odchylna']) {
+            return true;
+        }
+    }
+    
+    return false;
+}

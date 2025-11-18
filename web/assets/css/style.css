@@ -536,3 +536,23 @@ body {
     border: 1px solid #bee5eb;
     color: #0c5460;
 }
+
+/* Price warning - červené podbarvení pro odchylné ceny */
+.cena-warning {
+    background-color: #ffcccc !important;
+    transition: background-color 0.3s ease;
+}
+
+.cena-warning:hover {
+    background-color: #ffb3b3 !important;
+}
+
+.cena-warning td {
+    border-color: #ff9999 !important;
+}
+
+/* Tooltip styling pro varování */
+.cena-warning[title] {
+    cursor: help;
+    position: relative;
+}

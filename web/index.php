@@ -157,8 +157,19 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
                 </thead>
                 <tbody>
                     <?php foreach ($meridla as $meridlo): ?>
-                        <tr>
-                            <td><?php echo htmlspecialchars($meridlo['evidencni_cislo']); ?></td>
+                        <?php
+                        // Kontrola, zda měřidlo má nějakou odchylnou cenu
+                        $maOdchylku = maOdchylneCeny($meridlo['id']);
+                        $rowClass = $maOdchylku ? 'class="cena-warning"' : '';
+                        $tooltip = $maOdchylku ? 'title="⚠ Toto měřidlo má odchylnou cenu v historii"' : '';
+                        ?>
+                        <tr <?php echo $rowClass; ?> <?php echo $tooltip; ?>>
+                            <td>
+                                <?php echo htmlspecialchars($meridlo['evidencni_cislo']); ?>
+                                <?php if ($maOdchylku): ?>
+                                    <span style="color: #dc3545; font-size: 1.1em; margin-left: 0.3rem;" title="Odchylná cena">⚠</span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <a href="detail.php?id=<?php echo $meridlo['id']; ?>" class="gov-link">
                                     <?php echo htmlspecialchars($meridlo['nazev_meridla']); ?>

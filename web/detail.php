@@ -213,9 +213,32 @@ $pageTitle = 'Detail měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_NA
                 </thead>
                 <tbody>
                     <?php foreach ($ceny as $cena): ?>
-                        <tr>
+                        <?php
+                        // Kontrola odchylky u ručně zadaných cen
+                        $odchylka = null;
+                        $rowClass = '';
+                        $tooltip = '';
+                        
+                        if ($cena['je_manualni']) {
+                            $odchylka = zjistiOdchylkuCeny($meridlo['id'], $cena['rok'], $cena['cena']);
+                            if ($odchylka['je_odchylna']) {
+                                $rowClass = 'class="cena-warning"';
+                                $tooltip = sprintf(
+                                    'title="⚠ Odchylka %.1f%% od vypočtené ceny %s"',
+                                    $odchylka['odchylka_procent'],
+                                    formatCena($odchylka['vypocitana_cena'])
+                                );
+                            }
+                        }
+                        ?>
+                        <tr <?php echo $rowClass; ?> <?php echo $tooltip; ?>>
                             <td><strong><?php echo $cena['rok']; ?></strong></td>
-                            <td><?php echo formatCena($cena['cena']); ?></td>
+                            <td>
+                                <?php echo formatCena($cena['cena']); ?>
+                                <?php if ($odchylka && $odchylka['je_odchylna']): ?>
+                                    <span style="color: #dc3545; font-size: 1.2em; margin-left: 0.3rem;" title="Odchylka od vypočtené ceny">⚠</span>
+                                <?php endif; ?>
+                            </td>
                             <td>
                                 <?php if ($cena['je_manualni']): ?>
                                     <span class="badge-manual">Manuální</span>
@@ -223,7 +246,12 @@ $pageTitle = 'Detail měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_NA
                                     <span class="badge-auto">Vypočítaná</span>
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo htmlspecialchars($cena['poznamka'] ?? '-'); ?></td>
+                            <td>
+                                <?php echo htmlspecialchars($cena['poznamka'] ?? '-'); ?>
+                                <?php if ($odchylka && $odchylka['je_odchylna']): ?>
+                                    <br><small style="color: #dc3545;">Vypočteno: <?php echo formatCena($odchylka['vypocitana_cena']); ?> (odchylka <?php echo number_format($odchylka['odchylka_procent'], 1); ?>%)</small>
+                                <?php endif; ?>
+                            </td>
                             <td><?php echo date('d.m.Y H:i', strtotime($cena['created_at'])); ?></td>
                             <td>
                                 <?php echo $cena['updated_at'] 
