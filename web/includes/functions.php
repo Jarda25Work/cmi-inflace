@@ -127,6 +127,7 @@ function getCenyMeridla($meridloId) {
                 c.cena,
                 c.je_manualni,
                 c.poznamka,
+                c.ignorovat_odchylku,
                 c.created_at,
                 c.updated_at
             FROM ceny_meridel c
@@ -285,15 +286,16 @@ function deleteMeridlo($id) {
 /**
  * Uloží nebo aktualizuje cenu měřidla
  */
-function saveCena($meridloId, $rok, $cena, $jeManualni = true, $poznamka = null) {
+function saveCena($meridloId, $rok, $cena, $jeManualni = true, $poznamka = null, $ignorovatOdchylku = false) {
     $pdo = getDbConnection();
     
-    $sql = "INSERT INTO ceny_meridel (meridlo_id, rok, cena, je_manualni, poznamka)
-            VALUES (?, ?, ?, ?, ?)
+    $sql = "INSERT INTO ceny_meridel (meridlo_id, rok, cena, je_manualni, poznamka, ignorovat_odchylku)
+            VALUES (?, ?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 cena = VALUES(cena),
                 je_manualni = VALUES(je_manualni),
-                poznamka = VALUES(poznamka)";
+                poznamka = VALUES(poznamka),
+                ignorovat_odchylku = VALUES(ignorovat_odchylku)";
     
     $stmt = $pdo->prepare($sql);
     
@@ -302,7 +304,8 @@ function saveCena($meridloId, $rok, $cena, $jeManualni = true, $poznamka = null)
         $rok,
         $cena,
         $jeManualni ? 1 : 0,
-        $poznamka
+        $poznamka,
+        $ignorovatOdchylku ? 1 : 0
     ]);
 }
 
@@ -506,8 +509,18 @@ function vypocitejTeoretickouCenu($meridloId, $rok) {
  * Zjistí, zda je ručně zadaná cena odchylná od vypočtené
  * @return array ['je_odchylna' => bool, 'vypocitana_cena' => float, 'odchylka_procent' => float]
  */
-function zjistiOdchylkuCeny($meridloId, $rok, $rucniCena) {
+function zjistiOdchylkuCeny($meridloId, $rok, $rucniCena, $ignorovatOdchylku = false) {
     $pdo = getDbConnection();
+    
+    // Pokud je nastaveno ignorování odchylky, vždy vracíme false
+    if ($ignorovatOdchylku) {
+        return [
+            'je_odchylna' => false,
+            'vypocitana_cena' => null,
+            'odchylka_procent' => 0,
+            'ignorovano' => true
+        ];
+    }
     
     // Získat toleranci z konfigurace
     $tolerance = (float)getKonfigurace('cena_tolerance_procenta', 5);
@@ -564,8 +577,8 @@ function zjistiOdchylkuCeny($meridloId, $rok, $rucniCena) {
 function maOdchylneCeny($meridloId) {
     $pdo = getDbConnection();
     
-    // Získat všechny ručně zadané ceny
-    $sql = "SELECT rok, cena FROM ceny_meridel 
+    // Získat všechny ručně zadané ceny včetně flagu pro ignorování
+    $sql = "SELECT rok, cena, ignorovat_odchylku FROM ceny_meridel 
             WHERE meridlo_id = ? AND je_manualni = 1
             ORDER BY rok";
     $stmt = $pdo->prepare($sql);
@@ -573,7 +586,7 @@ function maOdchylneCeny($meridloId) {
     $ceny = $stmt->fetchAll();
     
     foreach ($ceny as $cena) {
-        $kontrola = zjistiOdchylkuCeny($meridloId, $cena['rok'], $cena['cena']);
+        $kontrola = zjistiOdchylkuCeny($meridloId, $cena['rok'], $cena['cena'], $cena['ignorovat_odchylku']);
         if ($kontrola['je_odchylna']) {
             return true;
         }

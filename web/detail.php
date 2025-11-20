@@ -220,7 +220,7 @@ $pageTitle = 'Detail měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_NA
                         $tooltip = '';
                         
                         if ($cena['je_manualni']) {
-                            $odchylka = zjistiOdchylkuCeny($meridlo['id'], $cena['rok'], $cena['cena']);
+                            $odchylka = zjistiOdchylkuCeny($meridlo['id'], $cena['rok'], $cena['cena'], $cena['ignorovat_odchylku']);
                             if ($odchylka['je_odchylna']) {
                                 $rowClass = 'class="cena-warning"';
                                 $tooltip = sprintf(
@@ -238,12 +238,18 @@ $pageTitle = 'Detail měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_NA
                                 <?php if ($odchylka && $odchylka['je_odchylna']): ?>
                                     <span style="color: #dc3545; font-size: 1.2em; margin-left: 0.3rem;" title="Odchylka od vypočtené ceny">⚠</span>
                                 <?php endif; ?>
+                                <?php if ($cena['ignorovat_odchylku']): ?>
+                                    <span style="color: #6c757d; font-size: 0.9em; margin-left: 0.3rem;" title="Kontrola odchylky ignorována">🔕</span>
+                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($cena['je_manualni']): ?>
                                     <span class="badge-manual">Manuální</span>
                                 <?php else: ?>
                                     <span class="badge-auto">Vypočítaná</span>
+                                <?php endif; ?>
+                                <?php if ($cena['ignorovat_odchylku']): ?>
+                                    <br><small style="color: #6c757d;">Ignorovat odchylku</small>
                                 <?php endif; ?>
                             </td>
                             <td>
