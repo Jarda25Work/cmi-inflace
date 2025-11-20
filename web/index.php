@@ -138,16 +138,31 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
     $exportAllUrl = 'export_excel.php';
     ?>
     
+    <?php
+    // Připrav URL pro XLSX export
+    $exportXlsxUrl = str_replace('export_excel.php', 'export_xlsx.php', $exportUrl);
+    $exportAllXlsxUrl = str_replace('export_excel.php', 'export_xlsx.php', $exportAllUrl);
+    ?>
+    
     <?php if ($search || $filterOdchylky): ?>
-        <a href="<?php echo $exportUrl; ?>" class="gov-button gov-button--secondary" style="background: #28a745; color: white; border-color: #28a745;">
-            📊 Exportovat výsledky (<?php echo $total; ?>)
+        <a href="<?php echo $exportXlsxUrl; ?>" class="gov-button gov-button--secondary" style="background: #28a745; color: white; border-color: #28a745;">
+            📊 Export XLSX výsledky (<?php echo $total; ?>)
         </a>
-        <a href="<?php echo $exportAllUrl; ?>" class="gov-button gov-button--secondary">
-            📊 Exportovat vše
+        <a href="<?php echo $exportAllXlsxUrl; ?>" class="gov-button gov-button--secondary" style="background: #28a745; color: white; border-color: #28a745;">
+            📊 Export XLSX vše
+        </a>
+        <a href="<?php echo $exportUrl; ?>" class="gov-button gov-button--secondary" style="font-size: 0.9em;">
+            CSV výsledky
+        </a>
+        <a href="<?php echo $exportAllUrl; ?>" class="gov-button gov-button--secondary" style="font-size: 0.9em;">
+            CSV vše
         </a>
     <?php else: ?>
-        <a href="<?php echo $exportUrl; ?>" class="gov-button gov-button--secondary" style="background: #28a745; color: white; border-color: #28a745;">
-            📊 Exportovat do Excelu
+        <a href="<?php echo $exportXlsxUrl; ?>" class="gov-button gov-button--secondary" style="background: #28a745; color: white; border-color: #28a745;">
+            📊 Exportovat XLSX
+        </a>
+        <a href="<?php echo $exportUrl; ?>" class="gov-button gov-button--secondary" style="font-size: 0.9em;">
+            CSV
         </a>
     <?php endif; ?>
 </div>

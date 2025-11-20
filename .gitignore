@@ -13,6 +13,10 @@ export_phpmyadmin/CMI_INFLACE_EXPORT.zip
 # CSV exports
 *.csv
 
+# Composer dependencies
+vendor/
+composer.lock
+
 # Python cache
 __pycache__/
 *.pyc
