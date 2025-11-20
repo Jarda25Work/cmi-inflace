@@ -17,10 +17,11 @@ $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $orderBy = isset($_GET['order']) ? $_GET['order'] : 'evidencni_cislo';
 $orderDir = isset($_GET['dir']) ? $_GET['dir'] : 'ASC';
-$filterOdchylky = isset($_GET['odchylky']) ? (int)$_GET['odchylky'] : 0; // 2 = pouze bez ceny
+$filterOdchylky = isset($_GET['odchylky']) ? (int)$_GET['odchylky'] : 0; // 2 = pouze bez ceny, 3 = přesné slovo
+$exactMatch = ($filterOdchylky === 3); // přesné hledání když je vybrána hodnota 3
 
 // Získání dat
-$result = getMeridla($page, $search, $orderBy, $orderDir, $filterOdchylky);
+$result = getMeridla($page, $search, $orderBy, $orderDir, $filterOdchylky, ITEMS_PER_PAGE, $exactMatch);
 $displayYear = $result['display_year'];
 $meridla = $result['data'];
 $totalPages = $result['pages'];
@@ -98,7 +99,7 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
 
 <!-- Vyhledávání a filtry -->
 <form method="GET" action="index.php" class="search-form" id="searchForm">
-    <div class="gov-form-group" style="flex: 1;">
+    <div class="gov-form-group search-autocomplete">
         <label for="searchInput" class="gov-label">Vyhledat měřidlo</label>
         <input 
             type="text" 
@@ -107,13 +108,16 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
             class="gov-form-control" 
             placeholder="Evidenční číslo, název nebo firma..."
             value="<?php echo htmlspecialchars($search); ?>"
+            autocomplete="off"
         >
+        <div id="searchSuggestions" class="autocomplete-suggestions"></div>
     </div>
-    <div class="gov-form-group" style="min-width: 200px;">
+    <div class="gov-form-group" style="flex-shrink: 0; margin-left: 2em;">
         <label for="filterOdchylky" class="gov-label">Filtr</label>
-        <select id="filterOdchylky" name="odchylky" class="gov-form-control">
-            <option value="0" <?php echo $filterOdchylky == 0 ? 'selected' : ''; ?>>Všechna měřidla</option>
+        <select id="filterOdchylky" name="odchylky" class="gov-form-control" style="width: 180px;">
+            <option value="0" <?php echo $filterOdchylky == 0 && !$exactMatch ? 'selected' : ''; ?>>Všechna měřidla</option>
             <option value="2" <?php echo $filterOdchylky == 2 ? 'selected' : ''; ?>>Pouze bez ceny</option>
+            <option value="3" <?php echo $exactMatch ? 'selected' : ''; ?>>Přesné slovo</option>
         </select>
     </div>
     <button type="submit" class="gov-button gov-button--primary">Filtrovat</button>

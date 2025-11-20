@@ -15,6 +15,7 @@ setSecurityHeaders();
     
     <!-- Custom CSS -->
     <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="assets/css/autocomplete.css">
 </head>
 <body>
     <header class="gov-header">

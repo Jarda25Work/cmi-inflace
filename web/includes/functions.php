@@ -8,7 +8,7 @@ require_once __DIR__ . '/config.php';
 /**
  * Získá seznam měřidel s aktuální cenou a stránkováním
  */
-function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orderDir = 'ASC', $filterBezCeny = 0, $itemsPerPage = ITEMS_PER_PAGE) {
+function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orderDir = 'ASC', $filterBezCeny = 0, $itemsPerPage = ITEMS_PER_PAGE, $exactMatch = false) {
     $pdo = getDbConnection();
     $offset = ($page - 1) * $itemsPerPage;
     // Dynamický rok pro zobrazení cen
@@ -30,7 +30,13 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
     $where = "WHERE m.aktivni = 1";
     $hasSearch = false;
     if ($search !== '' && $search !== null) {
-        $where .= " AND (m.evidencni_cislo LIKE ? OR m.nazev_meridla LIKE ? OR m.firma_kalibrujici LIKE ?)";
+        if ($exactMatch) {
+            // Přesná shoda - celý text musí být identický
+            $where .= " AND (m.evidencni_cislo = ? OR m.nazev_meridla = ? OR m.firma_kalibrujici = ?)";
+        } else {
+            // Částečné hledání (obsahuje)
+            $where .= " AND (m.evidencni_cislo LIKE ? OR m.nazev_meridla LIKE ? OR m.firma_kalibrujici LIKE ?)";
+        }
         $hasSearch = true;
     }
     // Pouze bez ceny (filterBezCeny == 2)
@@ -42,8 +48,13 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
     $countSql = "SELECT COUNT(*) FROM meridla m $where";
     $countStmt = $pdo->prepare($countSql);
     if ($hasSearch) {
-        $like = "%$search%";
-        $countStmt->execute([$like, $like, $like]);
+        if ($exactMatch) {
+            // Přesná shoda
+            $countStmt->execute([$search, $search, $search]);
+        } else {
+            $like = "%$search%";
+            $countStmt->execute([$like, $like, $like]);
+        }
     } else {
         $countStmt->execute();
     }
@@ -67,8 +78,13 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
             LIMIT $itemsPerPage OFFSET $offset";
     $stmt = $pdo->prepare($sql);
     if ($hasSearch) {
-        $like = "%$search%";
-        $stmt->execute([$like, $like, $like]);
+        if ($exactMatch) {
+            // Přesná shoda
+            $stmt->execute([$search, $search, $search]);
+        } else {
+            $like = "%$search%";
+            $stmt->execute([$like, $like, $like]);
+        }
     } else {
         $stmt->execute();
     }

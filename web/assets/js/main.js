@@ -63,19 +63,13 @@ const Utils = {
     }
 };
 
-// Search handling
+// Search handling - DISABLED: replaced by autocomplete
+// Live search je nyní nahrazen autocomplete funkcionalitou
 document.addEventListener('DOMContentLoaded', () => {
     const searchForm = document.getElementById('searchForm');
     const searchInput = document.getElementById('searchInput');
     
-    if (searchForm && searchInput) {
-        // Live search s debounce
-        const handleSearch = Utils.debounce(() => {
-            searchForm.submit();
-        }, 500);
-        
-        searchInput.addEventListener('input', handleSearch);
-    }
+    // Ponecháme pouze manuální odeslání formuláře (tlačítko nebo Enter bez autocomplete)
     
     // Confirm dialogs pro delete akce
     const deleteButtons = document.querySelectorAll('.btn-delete');

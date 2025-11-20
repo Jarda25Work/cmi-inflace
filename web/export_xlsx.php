@@ -17,10 +17,11 @@ requireLogin();
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $orderBy = isset($_GET['order']) ? $_GET['order'] : 'evidencni_cislo';
 $orderDir = isset($_GET['dir']) ? $_GET['dir'] : 'ASC';
-$filterOdchylky = isset($_GET['odchylky']) ? (int)$_GET['odchylky'] : 0;
+$filterOdchylky = isset($_GET['odchylky']) ? (int)$_GET['odchylky'] : 0; // 2 = pouze bez ceny, 3 = přesné slovo
+$exactMatch = ($filterOdchylky === 3); // přesné hledání když je vybrána hodnota 3
 
 // Získání všech dat (bez stránkování)
-$result = getMeridla(1, $search, $orderBy, $orderDir, $filterOdchylky, 999999);
+$result = getMeridla(1, $search, $orderBy, $orderDir, $filterOdchylky, 999999, $exactMatch);
 $meridla = $result['data'];
 
 // Vytvoření nového spreadsheet
