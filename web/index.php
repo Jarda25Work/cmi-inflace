@@ -119,6 +119,39 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
     <?php endif; ?>
 </form>
 
+<!-- Export do Excelu -->
+<div style="margin-top: 1rem; display: flex; gap: 0.5rem; align-items: center;">
+    <?php
+    // Připrav URL parametry pro export
+    $exportParams = [];
+    if ($search) {
+        $exportParams['search'] = $search;
+    }
+    if ($orderBy !== 'evidencni_cislo' || $orderDir !== 'ASC') {
+        $exportParams['order'] = $orderBy;
+        $exportParams['dir'] = $orderDir;
+    }
+    if ($filterOdchylky) {
+        $exportParams['odchylky'] = $filterOdchylky;
+    }
+    $exportUrl = 'export_excel.php' . ($exportParams ? '?' . http_build_query($exportParams) : '');
+    $exportAllUrl = 'export_excel.php';
+    ?>
+    
+    <?php if ($search || $filterOdchylky): ?>
+        <a href="<?php echo $exportUrl; ?>" class="gov-button gov-button--secondary" style="background: #28a745; color: white; border-color: #28a745;">
+            📊 Exportovat výsledky (<?php echo $total; ?>)
+        </a>
+        <a href="<?php echo $exportAllUrl; ?>" class="gov-button gov-button--secondary">
+            📊 Exportovat vše
+        </a>
+    <?php else: ?>
+        <a href="<?php echo $exportUrl; ?>" class="gov-button gov-button--secondary" style="background: #28a745; color: white; border-color: #28a745;">
+            📊 Exportovat do Excelu
+        </a>
+    <?php endif; ?>
+</div>
+
 <!-- Tabulka s měřidly -->
 <div class="meridla-table">
     <?php if (empty($meridla)): ?>
