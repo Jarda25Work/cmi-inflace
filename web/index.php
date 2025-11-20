@@ -106,10 +106,11 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
         >
     </div>
     <div class="gov-form-group" style="min-width: 200px;">
-        <label for="filterOdchylky" class="gov-label">Odchylky</label>
+        <label for="filterOdchylky" class="gov-label">Filtry</label>
         <select id="filterOdchylky" name="odchylky" class="gov-form-control">
             <option value="0" <?php echo $filterOdchylky == 0 ? 'selected' : ''; ?>>Všechna měřidla</option>
             <option value="1" <?php echo $filterOdchylky == 1 ? 'selected' : ''; ?>>Pouze s odchylkami</option>
+            <option value="2" <?php echo $filterOdchylky == 2 ? 'selected' : ''; ?>>Pouze bez ceny</option>
         </select>
     </div>
     <button type="submit" class="gov-button gov-button--primary">Filtrovat</button>
@@ -122,7 +123,15 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
 <div class="meridla-table">
     <?php if (empty($meridla)): ?>
         <div class="alert alert-info">
-            <?php if ($search): ?>
+            <?php if ($filterOdchylky == 1 && $search): ?>
+                Nebyly nalezeny žádné měřidla s odchylkami odpovídající vašemu hledání.
+            <?php elseif ($filterOdchylky == 1): ?>
+                Nebyla nalezena žádná měřidla s odchylkami. Všechna měřidla mají ceny odpovídající inflačnímu výpočtu.
+            <?php elseif ($filterOdchylky == 2 && $search): ?>
+                Nebyly nalezeny žádné měřidla bez ceny odpovídající vašemu hledání.
+            <?php elseif ($filterOdchylky == 2): ?>
+                Nebyla nalezena žádná měřidla bez ceny. Všechna měřidla mají zadanou cenu.
+            <?php elseif ($search): ?>
                 Nebyly nalezeny žádné měřidla odpovídající vašemu hledání.
             <?php else: ?>
                 V systému nejsou evidována žádná měřidla.

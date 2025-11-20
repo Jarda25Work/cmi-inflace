@@ -42,8 +42,8 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
         $hasSearch = true;
     }
     
-    // Hlavní dotaz - pokud filtrujeme odchylky, musíme načíst všechna data
-    if ($filterOdchylky == 1) {
+    // Hlavní dotaz - pokud filtrujeme (odchylky nebo bez ceny), musíme načíst všechna data
+    if ($filterOdchylky == 1 || $filterOdchylky == 2) {
         $sql = "SELECT 
                     m.id,
                     m.evidencni_cislo,
@@ -89,8 +89,8 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
         $stmt->bindValue($paramIndex++, $searchPattern);
     }
     
-    // LIMIT a OFFSET pouze pokud nefiltrujeme odchylky
-    if ($filterOdchylky != 1) {
+    // LIMIT a OFFSET pouze pokud nefiltrujeme
+    if ($filterOdchylky == 0) {
         $stmt->bindValue($paramIndex++, $itemsPerPage, PDO::PARAM_INT);
         $stmt->bindValue($paramIndex++, $offset, PDO::PARAM_INT);
     }
@@ -98,10 +98,21 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
     $stmt->execute();
     $allMeridla = $stmt->fetchAll();
     
-    // Pokud je filter na odchylky zapnutý, filtruj výsledky
+    // Pokud je filter zapnutý, filtruj výsledky
     if ($filterOdchylky == 1) {
+        // Filtr: pouze měřidla s odchylkami
         $meridla = array_filter($allMeridla, function($meridlo) {
             return maOdchylneCeny($meridlo['id']);
+        });
+        $meridla = array_values($meridla); // Přeindexuj pole
+        
+        // Pro stránkování potřebujeme správný výřez
+        $total = count($meridla);
+        $meridla = array_slice($meridla, $offset, $itemsPerPage);
+    } elseif ($filterOdchylky == 2) {
+        // Filtr: pouze měřidla bez ceny
+        $meridla = array_filter($allMeridla, function($meridlo) {
+            return $meridlo['rok_posledni_ceny'] === null;
         });
         $meridla = array_values($meridla); // Přeindexuj pole
         
