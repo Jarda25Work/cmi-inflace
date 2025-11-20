@@ -8,7 +8,7 @@ require_once __DIR__ . '/config.php';
 /**
  * Získá seznam měřidel s aktuální cenou a stránkováním
  */
-function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orderDir = 'ASC', $itemsPerPage = ITEMS_PER_PAGE) {
+function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orderDir = 'ASC', $filterOdchylky = 0, $itemsPerPage = ITEMS_PER_PAGE) {
     $pdo = getDbConnection();
     $offset = ($page - 1) * $itemsPerPage;
     
@@ -80,6 +80,14 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
     $stmt->execute();
     $meridla = $stmt->fetchAll();
     
+    // Pokud je filter na odchylky zapnutý, filtruj výsledky
+    if ($filterOdchylky == 1) {
+        $meridla = array_filter($meridla, function($meridlo) {
+            return maOdchylneCeny($meridlo['id']);
+        });
+        $meridla = array_values($meridla); // Přeindexuj pole
+    }
+    
     // Počet celkem pro stránkování
     $countSql = "SELECT COUNT(*) as total FROM meridla m $where";
     $countStmt = $pdo->prepare($countSql);
@@ -93,6 +101,11 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
     
     $countStmt->execute();
     $total = $countStmt->fetch()['total'];
+    
+    // Pokud filtrujeme odchylky, přepočítej celkový počet
+    if ($filterOdchylky == 1) {
+        $total = count($meridla);
+    }
     
     return [
         'data' => $meridla,

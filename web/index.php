@@ -14,16 +14,17 @@ $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $orderBy = isset($_GET['order']) ? $_GET['order'] : 'evidencni_cislo';
 $orderDir = isset($_GET['dir']) ? $_GET['dir'] : 'ASC';
+$filterOdchylky = isset($_GET['odchylky']) ? (int)$_GET['odchylky'] : 0;
 
 // Získání dat
-$result = getMeridla($page, $search, $orderBy, $orderDir);
+$result = getMeridla($page, $search, $orderBy, $orderDir, $filterOdchylky);
 $meridla = $result['data'];
 $totalPages = $result['pages'];
 $total = $result['total'];
 
 // Funkce pro vytvoření URL pro řazení
 function getSortUrl($column) {
-    global $orderBy, $orderDir, $search;
+    global $orderBy, $orderDir, $search, $filterOdchylky;
     
     // Pokud klikáme na stejný sloupec, obrať směr
     $newDir = ($orderBy === $column && $orderDir === 'ASC') ? 'DESC' : 'ASC';
@@ -31,6 +32,9 @@ function getSortUrl($column) {
     $params = ['order' => $column, 'dir' => $newDir];
     if ($search) {
         $params['search'] = $search;
+    }
+    if ($filterOdchylky) {
+        $params['odchylky'] = $filterOdchylky;
     }
     
     return 'index.php?' . http_build_query($params);
@@ -88,7 +92,7 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
     </div>
 <?php endif; ?>
 
-<!-- Vyhledávání -->
+<!-- Vyhledávání a filtry -->
 <form method="GET" action="index.php" class="search-form" id="searchForm">
     <div class="gov-form-group" style="flex: 1;">
         <label for="searchInput" class="gov-label">Vyhledat měřidlo</label>
@@ -101,9 +105,16 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
             value="<?php echo htmlspecialchars($search); ?>"
         >
     </div>
-    <button type="submit" class="gov-button gov-button--primary">Hledat</button>
-    <?php if ($search): ?>
-        <a href="index.php" class="gov-button gov-button--secondary">Zrušit filtr</a>
+    <div class="gov-form-group" style="min-width: 200px;">
+        <label for="filterOdchylky" class="gov-label">Odchylky</label>
+        <select id="filterOdchylky" name="odchylky" class="gov-form-control">
+            <option value="0" <?php echo $filterOdchylky == 0 ? 'selected' : ''; ?>>Všechna měřidla</option>
+            <option value="1" <?php echo $filterOdchylky == 1 ? 'selected' : ''; ?>>Pouze s odchylkami</option>
+        </select>
+    </div>
+    <button type="submit" class="gov-button gov-button--primary">Filtrovat</button>
+    <?php if ($search || $filterOdchylky): ?>
+        <a href="index.php" class="gov-button gov-button--secondary">Zrušit filtry</a>
     <?php endif; ?>
 </form>
 
@@ -220,6 +231,9 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
                 $params = [];
                 if ($search) {
                     $params['search'] = $search;
+                }
+                if ($filterOdchylky) {
+                    $params['odchylky'] = $filterOdchylky;
                 }
                 if ($orderBy !== 'evidencni_cislo' || $orderDir !== 'ASC') {
                     $params['order'] = $orderBy;
