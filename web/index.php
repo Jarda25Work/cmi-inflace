@@ -146,23 +146,14 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
     
     <?php if ($search || $filterOdchylky): ?>
         <a href="<?php echo $exportXlsxUrl; ?>" class="gov-button gov-button--secondary" style="background: #28a745; color: white; border-color: #28a745;">
-            📊 Export XLSX výsledky (<?php echo $total; ?>)
+            📊 Exportovat výsledky (<?php echo $total; ?>)
         </a>
         <a href="<?php echo $exportAllXlsxUrl; ?>" class="gov-button gov-button--secondary" style="background: #28a745; color: white; border-color: #28a745;">
-            📊 Export XLSX vše
-        </a>
-        <a href="<?php echo $exportUrl; ?>" class="gov-button gov-button--secondary" style="font-size: 0.9em;">
-            CSV výsledky
-        </a>
-        <a href="<?php echo $exportAllUrl; ?>" class="gov-button gov-button--secondary" style="font-size: 0.9em;">
-            CSV vše
+            📊 Exportovat vše
         </a>
     <?php else: ?>
         <a href="<?php echo $exportXlsxUrl; ?>" class="gov-button gov-button--secondary" style="background: #28a745; color: white; border-color: #28a745;">
-            📊 Exportovat XLSX
-        </a>
-        <a href="<?php echo $exportUrl; ?>" class="gov-button gov-button--secondary" style="font-size: 0.9em;">
-            CSV
+            📊 Exportovat do Excelu
         </a>
     <?php endif; ?>
 </div>

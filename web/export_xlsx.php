@@ -77,7 +77,8 @@ $row = 2;
 foreach ($meridla as $meridlo) {
     $detail = getMeridloDetail($meridlo['id']);
     
-    $sheet->setCellValue('A' . $row, $detail['evidencni_cislo']);
+    // Evidenční číslo formátovat jako text pro zachování nul na začátku
+    $sheet->setCellValueExplicit('A' . $row, $detail['evidencni_cislo'], \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
     $sheet->setCellValue('B' . $row, $detail['nazev_meridla']);
     $sheet->setCellValue('C' . $row, $detail['firma_kalibrujici'] ?? '');
     $sheet->setCellValue('D' . $row, $detail['status'] ?? '');
