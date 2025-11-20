@@ -19,9 +19,9 @@ $filterOdchylky = isset($_GET['odchylky']) ? (int)$_GET['odchylky'] : 0;
 $result = getMeridla(1, $search, $orderBy, $orderDir, $filterOdchylky, 999999);
 $meridla = $result['data'];
 
-// Nastavení hlaviček pro Excel export (Tab-delimited text)
-$filename = 'meridla_export_' . date('Y-m-d_His') . '.xls';
-header('Content-Type: application/vnd.ms-excel');
+// Nastavení hlaviček pro CSV export
+$filename = 'meridla_export_' . date('Y-m-d_His') . '.csv';
+header('Content-Type: text/csv; charset=UTF-8');
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Pragma: no-cache');
 header('Expires: 0');
@@ -29,19 +29,8 @@ header('Expires: 0');
 // Output stream
 $output = fopen('php://output', 'w');
 
-// UTF-8 BOM pro správné zobrazení českých znaků
+// UTF-8 BOM pro správné zobrazení českých znaků v Excelu
 fprintf($output, chr(0xEF).chr(0xBB).chr(0xBF));
-
-// Funkce pro escapování speciálních znaků v Tab-delimited formátu
-function escapeTabDelimited($value) {
-    // Nahraď Tab a nový řádek mezerami
-    $value = str_replace(["\t", "\r\n", "\r", "\n"], ' ', $value);
-    // Pokud obsahuje uvozovky, zdvojnásob je a obal do uvozovek
-    if (strpos($value, '"') !== false) {
-        $value = '"' . str_replace('"', '""', $value) . '"';
-    }
-    return $value;
-}
 
 // Hlavičky sloupců
 $headers = [
@@ -62,7 +51,7 @@ $headers = [
     'Poznámka CMI'
 ];
 
-fwrite($output, implode("\t", $headers) . "\n");
+fputcsv($output, $headers);
 
 // Data
 foreach ($meridla as $meridlo) {
@@ -70,24 +59,24 @@ foreach ($meridla as $meridlo) {
     $detail = getMeridloDetail($meridlo['id']);
     
     $row = [
-        escapeTabDelimited($detail['evidencni_cislo']),
-        escapeTabDelimited($detail['nazev_meridla']),
-        escapeTabDelimited($detail['firma_kalibrujici'] ?? ''),
-        escapeTabDelimited($detail['status'] ?? ''),
-        escapeTabDelimited($detail['kategorie'] ?? ''),
-        escapeTabDelimited(formatCena($meridlo['aktualni_cena'])),
-        escapeTabDelimited($meridlo['rok_posledni_ceny'] ?? 'N/A'),
-        escapeTabDelimited($detail['certifikat'] ?? ''),
-        escapeTabDelimited($detail['posledni_kalibrace'] ?? ''),
-        escapeTabDelimited($detail['planovani_kalibrace'] ?? ''),
-        escapeTabDelimited($detail['frekvence_kalibrace'] ?? ''),
-        escapeTabDelimited($detail['mer_rozsah'] ?? ''),
-        escapeTabDelimited($detail['presnost'] ?? ''),
-        escapeTabDelimited($detail['dovolena_odchylka'] ?? ''),
-        escapeTabDelimited($detail['poznamka_cmi'] ?? '')
+        $detail['evidencni_cislo'],
+        $detail['nazev_meridla'],
+        $detail['firma_kalibrujici'] ?? '',
+        $detail['status'] ?? '',
+        $detail['kategorie'] ?? '',
+        formatCena($meridlo['aktualni_cena']),
+        $meridlo['rok_posledni_ceny'] ?? 'N/A',
+        $detail['certifikat'] ?? '',
+        $detail['posledni_kalibrace'] ?? '',
+        $detail['planovani_kalibrace'] ?? '',
+        $detail['frekvence_kalibrace'] ?? '',
+        $detail['mer_rozsah'] ?? '',
+        $detail['presnost'] ?? '',
+        $detail['dovolena_odchylka'] ?? '',
+        $detail['poznamka_cmi'] ?? ''
     ];
     
-    fwrite($output, implode("\t", $row) . "\n");
+    fputcsv($output, $row);
 }
 
 fclose($output);
