@@ -213,34 +213,10 @@ $pageTitle = 'Detail měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_NA
                 </thead>
                 <tbody>
                     <?php foreach ($ceny as $cena): ?>
-                        <?php
-                        // Kontrola odchylky u ručně zadaných cen
-                        $odchylka = null;
-                        $rowClass = '';
-                        $tooltip = '';
-                        
-                        if ($cena['je_manualni']) {
-                            $odchylka = zjistiOdchylkuCeny($meridlo['id'], $cena['rok'], $cena['cena'], $cena['ignorovat_odchylku']);
-                            if ($odchylka['je_odchylna']) {
-                                $rowClass = 'class="cena-warning"';
-                                $tooltip = sprintf(
-                                    'title="⚠ Odchylka %.1f%% od vypočtené ceny %s"',
-                                    $odchylka['odchylka_procent'],
-                                    formatCena($odchylka['vypocitana_cena'])
-                                );
-                            }
-                        }
-                        ?>
-                        <tr <?php echo $rowClass; ?> <?php echo $tooltip; ?>>
+                        <tr>
                             <td><strong><?php echo $cena['rok']; ?></strong></td>
                             <td>
                                 <?php echo formatCena($cena['cena']); ?>
-                                <?php if ($odchylka && $odchylka['je_odchylna']): ?>
-                                    <span style="color: #dc3545; font-size: 1.2em; margin-left: 0.3rem;" title="Odchylka od vypočtené ceny">⚠</span>
-                                <?php endif; ?>
-                                <?php if ($cena['ignorovat_odchylku']): ?>
-                                    <span style="color: #6c757d; font-size: 0.9em; margin-left: 0.3rem;" title="Kontrola odchylky ignorována">🔕</span>
-                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php if ($cena['je_manualni']): ?>
@@ -248,15 +224,9 @@ $pageTitle = 'Detail měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_NA
                                 <?php else: ?>
                                     <span class="badge-auto">Vypočítaná</span>
                                 <?php endif; ?>
-                                <?php if ($cena['ignorovat_odchylku']): ?>
-                                    <br><small style="color: #6c757d;">Ignorovat odchylku</small>
-                                <?php endif; ?>
                             </td>
                             <td>
                                 <?php echo htmlspecialchars($cena['poznamka'] ?? '-'); ?>
-                                <?php if ($odchylka && $odchylka['je_odchylna']): ?>
-                                    <br><small style="color: #dc3545;">Vypočteno: <?php echo formatCena($odchylka['vypocitana_cena']); ?> (odchylka <?php echo number_format($odchylka['odchylka_procent'], 1); ?>%)</small>
-                                <?php endif; ?>
                             </td>
                             <td><?php echo date('d.m.Y H:i', strtotime($cena['created_at'])); ?></td>
                             <td>
@@ -290,8 +260,13 @@ $pageTitle = 'Detail měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_NA
     // Získat roky kde už jsou ceny uložené
     $ulozeneRoky = array_column($ceny, 'rok');
     
-    // Zobrazit vypočítané ceny pro roky 2016 až CURRENT_YEAR
-    $vypocitaneCeny = getVypocitaneCeny($meridloId, 2016, CURRENT_YEAR);
+    // Zjisti poslední dostupný rok inflace
+    $pdo = getDbConnection();
+    $stmtMaxInf = $pdo->query("SELECT MAX(rok) AS max_rok FROM inflace");
+    $maxInflRok = (int)($stmtMaxInf->fetchColumn() ?: CURRENT_YEAR);
+    
+    // Zobrazit vypočítané ceny pro roky 2016 až maxInflRok
+    $vypocitaneCeny = getVypocitaneCeny($meridloId, 2016, $maxInflRok);
     ?>
     
     <p class="gov-body-text">

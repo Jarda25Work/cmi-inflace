@@ -14,13 +14,64 @@ function initSession() {
         ini_set('session.use_strict_mode', 1);
         ini_set('session.cookie_samesite', 'Strict');
         
+        // Session timeouts
+        ini_set('session.gc_maxlifetime', 36000); // 10 hodin (36000 sekund)
+        session_set_cookie_params(36000); // Cookie vyprší za 10 hodin
+        
         // Pokud je HTTPS, nastav secure flag
         if (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') {
             ini_set('session.cookie_secure', 1);
         }
         
         session_start();
+        
+        // Kontrola timeoutů
+        checkSessionTimeout();
     }
+}
+
+/**
+ * Kontroluje timeout session (nečinnost a maximální délka)
+ */
+function checkSessionTimeout() {
+    $inactivityTimeout = 3600; // 60 minut nečinnosti
+    $maxLifetime = 36000; // 10 hodin maximálně
+    
+    // Kontrola poslední aktivity
+    if (isset($_SESSION['last_activity'])) {
+        $inactiveTime = time() - $_SESSION['last_activity'];
+        
+        if ($inactiveTime > $inactivityTimeout) {
+            // Odhlásit kvůli nečinnosti
+            logSecurityEvent('SESSION_TIMEOUT_INACTIVITY', 
+                "Username: " . ($_SESSION['username'] ?? 'unknown') . 
+                ", Inactive for: " . round($inactiveTime / 60) . " minutes");
+            logout();
+            header('Location: login.php?timeout=inactivity');
+            exit;
+        }
+    }
+    
+    // Kontrola celkové délky session
+    if (isset($_SESSION['created_at'])) {
+        $sessionAge = time() - $_SESSION['created_at'];
+        
+        if ($sessionAge > $maxLifetime) {
+            // Odhlásit kvůli maximální délce
+            logSecurityEvent('SESSION_TIMEOUT_MAX', 
+                "Username: " . ($_SESSION['username'] ?? 'unknown') . 
+                ", Session age: " . round($sessionAge / 3600, 1) . " hours");
+            logout();
+            header('Location: login.php?timeout=expired');
+            exit;
+        }
+    } else {
+        // První přístup - nastav čas vytvoření
+        $_SESSION['created_at'] = time();
+    }
+    
+    // Aktualizuj čas poslední aktivity
+    $_SESSION['last_activity'] = time();
 }
 
 /**
@@ -109,6 +160,8 @@ function login($username, $password) {
         $_SESSION['role'] = $user['role'];
         $_SESSION['full_name'] = mb_convert_encoding($user['full_name'] ?? $user['username'], 'UTF-8', 'UTF-8');
         $_SESSION['auth_method'] = 'password';
+        $_SESSION['created_at'] = time(); // Čas vytvoření session
+        $_SESSION['last_activity'] = time(); // Čas poslední aktivity
         
         // Vymaž záznamy o neúspěšných pokusech
         clearLoginAttempts($username);

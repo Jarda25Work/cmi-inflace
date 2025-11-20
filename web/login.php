@@ -22,6 +22,15 @@ if (isset($_GET['error'])) {
     $error = urldecode($_GET['error']);
 }
 
+// Zprávy o timeoutu
+if (isset($_GET['timeout'])) {
+    if ($_GET['timeout'] === 'inactivity') {
+        $error = 'Vaše relace byla ukončena kvůli nečinnosti (60 minut). Prosím přihlaste se znovu.';
+    } elseif ($_GET['timeout'] === 'expired') {
+        $error = 'Vaše relace vypršela (maximálně 10 hodin). Prosím přihlaste se znovu.';
+    }
+}
+
 $pageTitle = 'Přihlášení - ' . APP_NAME;
 ?>
 <!DOCTYPE html>

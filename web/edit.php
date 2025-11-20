@@ -63,8 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (!empty($cenaData['cena'])) {
                     $cena = (float)str_replace([' ', ','], ['', '.'], $cenaData['cena']);
                     $poznamka = !empty($cenaData['poznamka']) ? $cenaData['poznamka'] : null;
-                    $ignorovat = !empty($cenaData['ignorovat_odchylku']);
-                    saveCena($meridloId, (int)$rok, $cena, true, $poznamka, $ignorovat);
+                    saveCena($meridloId, (int)$rok, $cena, true, $poznamka);
                 }
             }
         }
@@ -308,7 +307,10 @@ $pageTitle = 'Editace měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_N
         
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-top: 1rem;">
             <?php 
-            $aktualniRok = CURRENT_YEAR;
+            // Zjisti poslední dostupný rok inflace
+            $pdo = getDbConnection();
+            $stmtMaxInf = $pdo->query("SELECT MAX(rok) AS max_rok FROM inflace");
+            $aktualniRok = (int)($stmtMaxInf->fetchColumn() ?: CURRENT_YEAR);
             $roky = range($aktualniRok - 5, $aktualniRok);
             
             // Přidat editovaný rok pokud není v rozsahu
@@ -330,7 +332,7 @@ $pageTitle = 'Editace měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_N
                 // Pokud cena neexistuje, vypočítat ji
                 $cenaValue = $existujiciCena ? $existujiciCena['cena'] : null;
                 $poznamkaValue = $existujiciCena ? $existujiciCena['poznamka'] : '';
-                $ignorovatValue = $existujiciCena ? $existujiciCena['ignorovat_odchylku'] : false;
+                // Ignorovat odchylku zrušeno
                 
                 // Highlight pokud editujeme tento rok
                 $highlight = ($editRok == $rok) ? 'border: 2px solid #0062AD; padding: 1rem; border-radius: 4px; background: #f0f8ff;' : 'padding: 1rem;';
@@ -363,24 +365,7 @@ $pageTitle = 'Editace měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_N
                         >
                     </div>
                     
-                    <div class="gov-form-group">
-                        <div style="display: flex; align-items: center;">
-                            <input 
-                                type="checkbox" 
-                                id="ignorovat_<?php echo $rok; ?>" 
-                                name="ceny[<?php echo $rok; ?>][ignorovat_odchylku]" 
-                                value="1"
-                                <?php echo $ignorovatValue ? 'checked' : ''; ?>
-                                style="margin-right: 0.5rem;"
-                            >
-                            <label for="ignorovat_<?php echo $rok; ?>" style="margin: 0;">
-                                Ignorovat odchylku
-                            </label>
-                        </div>
-                        <small style="color: #666; display: block; margin-top: 0.3rem;">
-                            Pokud je zaškrtnuto, nebude se kontrolovat odchylka od vypočtené ceny
-                        </small>
-                    </div>
+                    <!-- Pole pro ignorování odchylky odstraněno -->
                     
                     <?php if ($existujiciCena): ?>
                         <small style="color: #666;">

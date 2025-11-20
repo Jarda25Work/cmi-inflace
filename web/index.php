@@ -9,15 +9,19 @@ require_once 'includes/functions.php';
 // Vyžaduje přihlášení
 requireLogin();
 
+// Dynamický rok pro zobrazení cen
+$displayYear = (int)getKonfigurace('display_year', CURRENT_YEAR);
+
 // Stránkování, vyhledávání a řazení
 $page = isset($_GET['page']) ? max(1, (int)$_GET['page']) : 1;
 $search = isset($_GET['search']) ? trim($_GET['search']) : '';
 $orderBy = isset($_GET['order']) ? $_GET['order'] : 'evidencni_cislo';
 $orderDir = isset($_GET['dir']) ? $_GET['dir'] : 'ASC';
-$filterOdchylky = isset($_GET['odchylky']) ? (int)$_GET['odchylky'] : 0;
+$filterOdchylky = isset($_GET['odchylky']) ? (int)$_GET['odchylky'] : 0; // 2 = pouze bez ceny
 
 // Získání dat
 $result = getMeridla($page, $search, $orderBy, $orderDir, $filterOdchylky);
+$displayYear = $result['display_year'];
 $meridla = $result['data'];
 $totalPages = $result['pages'];
 $total = $result['total'];
@@ -106,10 +110,9 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
         >
     </div>
     <div class="gov-form-group" style="min-width: 200px;">
-        <label for="filterOdchylky" class="gov-label">Filtry</label>
+        <label for="filterOdchylky" class="gov-label">Filtr</label>
         <select id="filterOdchylky" name="odchylky" class="gov-form-control">
             <option value="0" <?php echo $filterOdchylky == 0 ? 'selected' : ''; ?>>Všechna měřidla</option>
-            <option value="1" <?php echo $filterOdchylky == 1 ? 'selected' : ''; ?>>Pouze s odchylkami</option>
             <option value="2" <?php echo $filterOdchylky == 2 ? 'selected' : ''; ?>>Pouze bez ceny</option>
         </select>
     </div>
@@ -162,11 +165,7 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
 <div class="meridla-table">
     <?php if (empty($meridla)): ?>
         <div class="alert alert-info">
-            <?php if ($filterOdchylky == 1 && $search): ?>
-                Nebyly nalezeny žádné měřidla s odchylkami odpovídající vašemu hledání.
-            <?php elseif ($filterOdchylky == 1): ?>
-                Nebyla nalezena žádná měřidla s odchylkami. Všechna měřidla mají ceny odpovídající inflačnímu výpočtu.
-            <?php elseif ($filterOdchylky == 2 && $search): ?>
+            <?php if ($filterOdchylky == 2 && $search): ?>
                 Nebyly nalezeny žádné měřidla bez ceny odpovídající vašemu hledání.
             <?php elseif ($filterOdchylky == 2): ?>
                 Nebyla nalezena žádná měřidla bez ceny. Všechna měřidla mají zadanou cenu.
@@ -208,7 +207,7 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
                         </th>
                         <th>
                             <a href="<?php echo getSortUrl('aktualni_cena'); ?>" class="sort-link">
-                                Aktuální cena (<?php echo CURRENT_YEAR; ?>)<?php echo getSortIcon('aktualni_cena'); ?>
+                                Aktuální cena (<?php echo $displayYear; ?>)<?php echo getSortIcon('aktualni_cena'); ?>
                             </a>
                         </th>
                         <th>Akce</th>
@@ -216,33 +215,9 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
                 </thead>
                 <tbody>
                     <?php foreach ($meridla as $meridlo): ?>
-                        <?php
-                        // Kontrola, zda měřidlo má nějakou odchylnou cenu
-                        $maOdchylku = maOdchylneCeny($meridlo['id']);
-                        $rowClass = $maOdchylku ? 'class="cena-warning"' : '';
-                        $tooltip = $maOdchylku ? 'title="⚠ Toto měřidlo má odchylnou cenu v historii"' : '';
-                        
-                        // Pokud má aktuální cena odchylku, získej detaily
-                        $odchylkaInfo = null;
-                        if ($meridlo['rok_posledni_ceny'] == CURRENT_YEAR) {
-                            // Je zde uložená cena pro aktuální rok, zkontroluj ji
-                            $pdo = getDbConnection();
-                            $sql = "SELECT cena, je_manualni FROM ceny_meridel WHERE meridlo_id = ? AND rok = ?";
-                            $stmt = $pdo->prepare($sql);
-                            $stmt->execute([$meridlo['id'], CURRENT_YEAR]);
-                            $aktualniCenaData = $stmt->fetch();
-                            
-                            if ($aktualniCenaData && $aktualniCenaData['je_manualni']) {
-                                $odchylkaInfo = zjistiOdchylkuCeny($meridlo['id'], CURRENT_YEAR, $aktualniCenaData['cena']);
-                            }
-                        }
-                        ?>
-                        <tr <?php echo $rowClass; ?> <?php echo $tooltip; ?>>
+                        <tr>
                             <td>
                                 <?php echo htmlspecialchars($meridlo['evidencni_cislo']); ?>
-                                <?php if ($maOdchylku): ?>
-                                    <span style="color: #dc3545; font-size: 1.1em; margin-left: 0.3rem;" title="Odchylná cena">⚠</span>
-                                <?php endif; ?>
                             </td>
                             <td>
                                 <a href="detail.php?id=<?php echo $meridlo['id']; ?>" class="gov-link">
@@ -254,10 +229,8 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
                             <td><?php echo htmlspecialchars($meridlo['kategorie'] ?? '-'); ?></td>
                             <td>
                                 <strong><?php echo formatCena($meridlo['aktualni_cena']); ?></strong>
-                                <?php if ($meridlo['rok_posledni_ceny'] && $meridlo['rok_posledni_ceny'] < CURRENT_YEAR): ?>
-                                    <br><small style="color: #666;">(vypočteno z roku <?php echo $meridlo['rok_posledni_ceny']; ?>)</small>
-                                <?php elseif ($odchylkaInfo && $odchylkaInfo['je_odchylna']): ?>
-                                    <br><small style="color: #dc3545;">(správně: <?php echo formatCena($odchylkaInfo['vypocitana_cena']); ?> z roku <?php echo $odchylkaInfo['bazovy_rok']; ?>)</small>
+                                <?php if ($meridlo['rok_posledni_ceny'] && $meridlo['rok_posledni_ceny'] < $displayYear): ?>
+                                    <br><small style="color: #666;">(dopočteno inflací z roku <?php echo $meridlo['rok_posledni_ceny']; ?>)</small>
                                 <?php endif; ?>
                             </td>
                             <td>

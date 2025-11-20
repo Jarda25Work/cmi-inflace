@@ -191,6 +191,8 @@ function loginWithOIDC($code, $state) {
     $_SESSION['role'] = $user['role'];
     $_SESSION['full_name'] = $user['full_name'];
     $_SESSION['auth_method'] = 'oidc';
+        $_SESSION['created_at'] = time(); // Čas vytvoření session
+        $_SESSION['last_activity'] = time(); // Čas poslední aktivity
     
     return $user;
 }

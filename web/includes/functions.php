@@ -8,11 +8,12 @@ require_once __DIR__ . '/config.php';
 /**
  * Získá seznam měřidel s aktuální cenou a stránkováním
  */
-function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orderDir = 'ASC', $filterOdchylky = 0, $itemsPerPage = ITEMS_PER_PAGE) {
+function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orderDir = 'ASC', $filterBezCeny = 0, $itemsPerPage = ITEMS_PER_PAGE) {
     $pdo = getDbConnection();
     $offset = ($page - 1) * $itemsPerPage;
-    
-    // Validace sloupců pro řazení
+    // Dynamický rok pro zobrazení cen
+    $displayYear = (int)getKonfigurace('display_year', CURRENT_YEAR);
+
     $allowedColumns = [
         'evidencni_cislo' => 'm.evidencni_cislo',
         'nazev_meridla' => 'm.nazev_meridla',
@@ -21,165 +22,94 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
         'kategorie' => 'm.kategorie',
         'aktualni_cena' => 'aktualni_cena'
     ];
-    
-    // Validace směru řazení
     $orderDir = strtoupper($orderDir) === 'DESC' ? 'DESC' : 'ASC';
-    
-    // Kontrola, zda je sloupec povolen
     if (!isset($allowedColumns[$orderBy])) {
         $orderBy = 'evidencni_cislo';
     }
-    
     $orderColumn = $allowedColumns[$orderBy];
-    
     $where = "WHERE m.aktivni = 1";
     $hasSearch = false;
-    
     if ($search !== '' && $search !== null) {
-        $where .= " AND (m.evidencni_cislo LIKE ? 
-                    OR m.nazev_meridla LIKE ? 
-                    OR m.firma_kalibrujici LIKE ?)";
+        $where .= " AND (m.evidencni_cislo LIKE ? OR m.nazev_meridla LIKE ? OR m.firma_kalibrujici LIKE ?)";
         $hasSearch = true;
     }
-    
-    // Hlavní dotaz - pokud filtrujeme (odchylky nebo bez ceny), musíme načíst všechna data
-    if ($filterOdchylky == 1 || $filterOdchylky == 2) {
-        $sql = "SELECT 
-                    m.id,
-                    m.evidencni_cislo,
-                    m.nazev_meridla,
-                    m.firma_kalibrujici,
-                    m.status,
-                    m.kategorie,
-                    fn_get_cena(m.id, ?) as aktualni_cena,
-                    (SELECT cena FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) as posledni_ulozena_cena,
-                    (SELECT rok FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) as rok_posledni_ceny
-                FROM meridla m
-                $where
-                ORDER BY $orderColumn $orderDir";
-    } else {
-        $sql = "SELECT 
-                    m.id,
-                    m.evidencni_cislo,
-                    m.nazev_meridla,
-                    m.firma_kalibrujici,
-                    m.status,
-                    m.kategorie,
-                    fn_get_cena(m.id, ?) as aktualni_cena,
-                    (SELECT cena FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) as posledni_ulozena_cena,
-                    (SELECT rok FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) as rok_posledni_ceny
-                FROM meridla m
-                $where
-                ORDER BY $orderColumn $orderDir
-                LIMIT ? OFFSET ?";
+    // Pouze bez ceny (filterBezCeny == 2)
+    if ((int)$filterBezCeny === 2) {
+        $where .= " AND NOT EXISTS (SELECT 1 FROM ceny_meridel c WHERE c.meridlo_id = m.id)";
     }
-    
-    $stmt = $pdo->prepare($sql);
-    
-    $paramIndex = 1;
-    
-    // První parametr je current_year pro fn_get_cena
-    $stmt->bindValue($paramIndex++, CURRENT_YEAR, PDO::PARAM_INT);
-    
-    // Pokud je search, přidej 3x search parametr
+
+    // Celkový počet pro stránkování
+    $countSql = "SELECT COUNT(*) FROM meridla m $where";
+    $countStmt = $pdo->prepare($countSql);
     if ($hasSearch) {
-        $searchPattern = "%$search%";
-        $stmt->bindValue($paramIndex++, $searchPattern);
-        $stmt->bindValue($paramIndex++, $searchPattern);
-        $stmt->bindValue($paramIndex++, $searchPattern);
-    }
-    
-    // LIMIT a OFFSET pouze pokud nefiltrujeme
-    if ($filterOdchylky == 0) {
-        $stmt->bindValue($paramIndex++, $itemsPerPage, PDO::PARAM_INT);
-        $stmt->bindValue($paramIndex++, $offset, PDO::PARAM_INT);
-    }
-    
-    $stmt->execute();
-    $allMeridla = $stmt->fetchAll();
-    
-    // Pokud je filter zapnutý, filtruj výsledky
-    if ($filterOdchylky == 1) {
-        // Filtr: pouze měřidla s odchylkami
-        $meridla = array_filter($allMeridla, function($meridlo) {
-            return maOdchylneCeny($meridlo['id']);
-        });
-        $meridla = array_values($meridla); // Přeindexuj pole
-        
-        // Pro stránkování potřebujeme správný výřez
-        $total = count($meridla);
-        $meridla = array_slice($meridla, $offset, $itemsPerPage);
-    } elseif ($filterOdchylky == 2) {
-        // Filtr: pouze měřidla bez ceny
-        $meridla = array_filter($allMeridla, function($meridlo) {
-            return $meridlo['rok_posledni_ceny'] === null;
-        });
-        $meridla = array_values($meridla); // Přeindexuj pole
-        
-        // Pro stránkování potřebujeme správný výřez
-        $total = count($meridla);
-        $meridla = array_slice($meridla, $offset, $itemsPerPage);
+        $like = "%$search%";
+        $countStmt->execute([$like, $like, $like]);
     } else {
-        $meridla = $allMeridla;
-        
-        // Počet celkem pro stránkování
-        $countSql = "SELECT COUNT(*) as total FROM meridla m $where";
-        $countStmt = $pdo->prepare($countSql);
-        
-        if ($hasSearch) {
-            $searchPattern = "%$search%";
-            $countStmt->bindValue(1, $searchPattern);
-            $countStmt->bindValue(2, $searchPattern);
-            $countStmt->bindValue(3, $searchPattern);
-        }
-        
         $countStmt->execute();
-        $total = $countStmt->fetch()['total'];
     }
-    
+    $total = (int)$countStmt->fetchColumn();
+    $pages = max(1, (int)ceil($total / $itemsPerPage));
+    if ($page > $pages) { $page = $pages; $offset = ($page - 1) * $itemsPerPage; }
+
+    // Data dotaz
+    $sql = "SELECT 
+                m.id,
+                m.evidencni_cislo,
+                m.nazev_meridla,
+                m.firma_kalibrujici,
+                m.status,
+                m.kategorie,
+                (SELECT fn_get_cena(m.id, $displayYear)) AS aktualni_cena,
+                (SELECT c.rok FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) AS rok_posledni_ceny
+            FROM meridla m
+            $where
+            ORDER BY $orderColumn $orderDir
+            LIMIT $itemsPerPage OFFSET $offset";
+    $stmt = $pdo->prepare($sql);
+    if ($hasSearch) {
+        $like = "%$search%";
+        $stmt->execute([$like, $like, $like]);
+    } else {
+        $stmt->execute();
+    }
+    $data = $stmt->fetchAll();
     return [
-        'data' => $meridla,
+        'data' => $data,
         'total' => $total,
+        'pages' => $pages,
         'page' => $page,
-        'pages' => ceil($total / $itemsPerPage),
-        'itemsPerPage' => $itemsPerPage
+        'display_year' => $displayYear
     ];
 }
 
 /**
- * Získá detail jednoho měřidla
+ * Detail měřidla
  */
 function getMeridloDetail($id) {
     $pdo = getDbConnection();
-    
-    $sql = "SELECT * FROM meridla WHERE id = :id";
+    $sql = "SELECT * FROM meridla WHERE id = ? LIMIT 1";
     $stmt = $pdo->prepare($sql);
-    $stmt->execute(['id' => $id]);
-    
+    $stmt->execute([$id]);
     return $stmt->fetch();
 }
 
 /**
- * Získá historii cen měřidla
+ * Historie uložených cen měřidla
  */
 function getCenyMeridla($meridloId) {
     $pdo = getDbConnection();
-    
     $sql = "SELECT 
                 c.rok,
                 c.cena,
                 c.je_manualni,
                 c.poznamka,
-                c.ignorovat_odchylku,
                 c.created_at,
                 c.updated_at
             FROM ceny_meridel c
             WHERE c.meridlo_id = :meridlo_id
             ORDER BY c.rok DESC";
-    
     $stmt = $pdo->prepare($sql);
     $stmt->execute(['meridlo_id' => $meridloId]);
-    
     return $stmt->fetchAll();
 }
 
@@ -329,16 +259,15 @@ function deleteMeridlo($id) {
 /**
  * Uloží nebo aktualizuje cenu měřidla
  */
-function saveCena($meridloId, $rok, $cena, $jeManualni = true, $poznamka = null, $ignorovatOdchylku = false) {
+function saveCena($meridloId, $rok, $cena, $jeManualni = true, $poznamka = null) {
     $pdo = getDbConnection();
     
-    $sql = "INSERT INTO ceny_meridel (meridlo_id, rok, cena, je_manualni, poznamka, ignorovat_odchylku)
-            VALUES (?, ?, ?, ?, ?, ?)
+    $sql = "INSERT INTO ceny_meridel (meridlo_id, rok, cena, je_manualni, poznamka)
+            VALUES (?, ?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE
                 cena = VALUES(cena),
                 je_manualni = VALUES(je_manualni),
-                poznamka = VALUES(poznamka),
-                ignorovat_odchylku = VALUES(ignorovat_odchylku)";
+                poznamka = VALUES(poznamka)";
     
     $stmt = $pdo->prepare($sql);
     
@@ -347,8 +276,7 @@ function saveCena($meridloId, $rok, $cena, $jeManualni = true, $poznamka = null,
         $rok,
         $cena,
         $jeManualni ? 1 : 0,
-        $poznamka,
-        $ignorovatOdchylku ? 1 : 0
+        $poznamka
     ]);
 }
 
@@ -548,92 +476,4 @@ function vypocitejTeoretickouCenu($meridloId, $rok) {
     return $result ? (float)$result['cena'] : null;
 }
 
-/**
- * Zjistí, zda je ručně zadaná cena odchylná od vypočtené
- * @return array ['je_odchylna' => bool, 'vypocitana_cena' => float, 'odchylka_procent' => float]
- */
-function zjistiOdchylkuCeny($meridloId, $rok, $rucniCena, $ignorovatOdchylku = false) {
-    $pdo = getDbConnection();
-    
-    // Pokud je nastaveno ignorování odchylky, vždy vracíme false
-    if ($ignorovatOdchylku) {
-        return [
-            'je_odchylna' => false,
-            'vypocitana_cena' => null,
-            'odchylka_procent' => 0,
-            'ignorovano' => true
-        ];
-    }
-    
-    // Získat toleranci z konfigurace
-    $tolerance = (float)getKonfigurace('cena_tolerance_procenta', 5);
-    
-    // Najít poslední uloženou cenu PŘED tímto rokem (nezahrnuje aktuální rok)
-    $sql = "SELECT rok, cena FROM ceny_meridel 
-            WHERE meridlo_id = ? AND rok < ? 
-            ORDER BY rok DESC 
-            LIMIT 1";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$meridloId, $rok]);
-    $predchoziCena = $stmt->fetch();
-    
-    if (!$predchoziCena) {
-        // Není z čeho počítat inflaci
-        return [
-            'je_odchylna' => false,
-            'vypocitana_cena' => null,
-            'odchylka_procent' => 0
-        ];
-    }
-    
-    // Vypočítat teoretickou cenu z předchozí uložené ceny pomocí fn_vypocitat_cenu_s_inflaci
-    $sql = "SELECT fn_vypocitat_cenu_s_inflaci(?, ?, ?) as vypocitana_cena";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$predchoziCena['cena'], $predchoziCena['rok'], $rok]);
-    $result = $stmt->fetch();
-    $vypocitanaCena = $result ? (float)$result['vypocitana_cena'] : null;
-    
-    if ($vypocitanaCena === null || $vypocitanaCena == 0) {
-        return [
-            'je_odchylna' => false,
-            'vypocitana_cena' => null,
-            'odchylka_procent' => 0
-        ];
-    }
-    
-    // Vypočítat procentuální odchylku
-    $odchylka = abs($rucniCena - $vypocitanaCena);
-    $odchylkaProcent = ($odchylka / $vypocitanaCena) * 100;
-    
-    return [
-        'je_odchylna' => $odchylkaProcent > $tolerance,
-        'vypocitana_cena' => $vypocitanaCena,
-        'odchylka_procent' => $odchylkaProcent,
-        'bazova_cena' => $predchoziCena['cena'],
-        'bazovy_rok' => $predchoziCena['rok']
-    ];
-}
-
-/**
- * Zkontroluje, zda měřidlo má nějakou odchylnou cenu v historii
- */
-function maOdchylneCeny($meridloId) {
-    $pdo = getDbConnection();
-    
-    // Získat všechny ručně zadané ceny včetně flagu pro ignorování
-    $sql = "SELECT rok, cena, ignorovat_odchylku FROM ceny_meridel 
-            WHERE meridlo_id = ? AND je_manualni = 1
-            ORDER BY rok";
-    $stmt = $pdo->prepare($sql);
-    $stmt->execute([$meridloId]);
-    $ceny = $stmt->fetchAll();
-    
-    foreach ($ceny as $cena) {
-        $kontrola = zjistiOdchylkuCeny($meridloId, $cena['rok'], $cena['cena'], $cena['ignorovat_odchylku']);
-        if ($kontrola['je_odchylna']) {
-            return true;
-        }
-    }
-    
-    return false;
-}
+// Odstraněny funkce pro kontrolu odchylek (zjistiOdchylkuCeny, maOdchylneCeny)
