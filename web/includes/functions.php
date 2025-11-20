@@ -42,21 +42,37 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
         $hasSearch = true;
     }
     
-    // Hlavní dotaz
-    $sql = "SELECT 
-                m.id,
-                m.evidencni_cislo,
-                m.nazev_meridla,
-                m.firma_kalibrujici,
-                m.status,
-                m.kategorie,
-                fn_get_cena(m.id, ?) as aktualni_cena,
-                (SELECT cena FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) as posledni_ulozena_cena,
-                (SELECT rok FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) as rok_posledni_ceny
-            FROM meridla m
-            $where
-            ORDER BY $orderColumn $orderDir
-            LIMIT ? OFFSET ?";
+    // Hlavní dotaz - pokud filtrujeme odchylky, musíme načíst všechna data
+    if ($filterOdchylky == 1) {
+        $sql = "SELECT 
+                    m.id,
+                    m.evidencni_cislo,
+                    m.nazev_meridla,
+                    m.firma_kalibrujici,
+                    m.status,
+                    m.kategorie,
+                    fn_get_cena(m.id, ?) as aktualni_cena,
+                    (SELECT cena FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) as posledni_ulozena_cena,
+                    (SELECT rok FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) as rok_posledni_ceny
+                FROM meridla m
+                $where
+                ORDER BY $orderColumn $orderDir";
+    } else {
+        $sql = "SELECT 
+                    m.id,
+                    m.evidencni_cislo,
+                    m.nazev_meridla,
+                    m.firma_kalibrujici,
+                    m.status,
+                    m.kategorie,
+                    fn_get_cena(m.id, ?) as aktualni_cena,
+                    (SELECT cena FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) as posledni_ulozena_cena,
+                    (SELECT rok FROM ceny_meridel c WHERE c.meridlo_id = m.id ORDER BY c.rok DESC LIMIT 1) as rok_posledni_ceny
+                FROM meridla m
+                $where
+                ORDER BY $orderColumn $orderDir
+                LIMIT ? OFFSET ?";
+    }
     
     $stmt = $pdo->prepare($sql);
     
@@ -73,38 +89,41 @@ function getMeridla($page = 1, $search = '', $orderBy = 'evidencni_cislo', $orde
         $stmt->bindValue($paramIndex++, $searchPattern);
     }
     
-    // LIMIT a OFFSET na konci
-    $stmt->bindValue($paramIndex++, $itemsPerPage, PDO::PARAM_INT);
-    $stmt->bindValue($paramIndex++, $offset, PDO::PARAM_INT);
+    // LIMIT a OFFSET pouze pokud nefiltrujeme odchylky
+    if ($filterOdchylky != 1) {
+        $stmt->bindValue($paramIndex++, $itemsPerPage, PDO::PARAM_INT);
+        $stmt->bindValue($paramIndex++, $offset, PDO::PARAM_INT);
+    }
     
     $stmt->execute();
-    $meridla = $stmt->fetchAll();
+    $allMeridla = $stmt->fetchAll();
     
     // Pokud je filter na odchylky zapnutý, filtruj výsledky
     if ($filterOdchylky == 1) {
-        $meridla = array_filter($meridla, function($meridlo) {
+        $meridla = array_filter($allMeridla, function($meridlo) {
             return maOdchylneCeny($meridlo['id']);
         });
         $meridla = array_values($meridla); // Přeindexuj pole
-    }
-    
-    // Počet celkem pro stránkování
-    $countSql = "SELECT COUNT(*) as total FROM meridla m $where";
-    $countStmt = $pdo->prepare($countSql);
-    
-    if ($hasSearch) {
-        $searchPattern = "%$search%";
-        $countStmt->bindValue(1, $searchPattern);
-        $countStmt->bindValue(2, $searchPattern);
-        $countStmt->bindValue(3, $searchPattern);
-    }
-    
-    $countStmt->execute();
-    $total = $countStmt->fetch()['total'];
-    
-    // Pokud filtrujeme odchylky, přepočítej celkový počet
-    if ($filterOdchylky == 1) {
+        
+        // Pro stránkování potřebujeme správný výřez
         $total = count($meridla);
+        $meridla = array_slice($meridla, $offset, $itemsPerPage);
+    } else {
+        $meridla = $allMeridla;
+        
+        // Počet celkem pro stránkování
+        $countSql = "SELECT COUNT(*) as total FROM meridla m $where";
+        $countStmt = $pdo->prepare($countSql);
+        
+        if ($hasSearch) {
+            $searchPattern = "%$search%";
+            $countStmt->bindValue(1, $searchPattern);
+            $countStmt->bindValue(2, $searchPattern);
+            $countStmt->bindValue(3, $searchPattern);
+        }
+        
+        $countStmt->execute();
+        $total = $countStmt->fetch()['total'];
     }
     
     return [
