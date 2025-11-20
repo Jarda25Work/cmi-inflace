@@ -51,7 +51,7 @@ $headers = [
     'Poznámka CMI'
 ];
 
-fputcsv($output, $headers);
+fputcsv($output, $headers, ';');
 
 // Data
 foreach ($meridla as $meridlo) {
@@ -76,7 +76,7 @@ foreach ($meridla as $meridlo) {
         $detail['poznamka_cmi'] ?? ''
     ];
     
-    fputcsv($output, $row);
+    fputcsv($output, $row, ';');
 }
 
 fclose($output);
