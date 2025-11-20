@@ -162,6 +162,21 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
                         $maOdchylku = maOdchylneCeny($meridlo['id']);
                         $rowClass = $maOdchylku ? 'class="cena-warning"' : '';
                         $tooltip = $maOdchylku ? 'title="⚠ Toto měřidlo má odchylnou cenu v historii"' : '';
+                        
+                        // Pokud má aktuální cena odchylku, získej detaily
+                        $odchylkaInfo = null;
+                        if ($meridlo['rok_posledni_ceny'] == CURRENT_YEAR) {
+                            // Je zde uložená cena pro aktuální rok, zkontroluj ji
+                            $pdo = getDbConnection();
+                            $sql = "SELECT cena, je_manualni FROM ceny_meridel WHERE meridlo_id = ? AND rok = ?";
+                            $stmt = $pdo->prepare($sql);
+                            $stmt->execute([$meridlo['id'], CURRENT_YEAR]);
+                            $aktualniCenaData = $stmt->fetch();
+                            
+                            if ($aktualniCenaData && $aktualniCenaData['je_manualni']) {
+                                $odchylkaInfo = zjistiOdchylkuCeny($meridlo['id'], CURRENT_YEAR, $aktualniCenaData['cena']);
+                            }
+                        }
                         ?>
                         <tr <?php echo $rowClass; ?> <?php echo $tooltip; ?>>
                             <td>
@@ -182,6 +197,8 @@ $pageTitle = 'Přehled měřidel - ' . APP_NAME;
                                 <strong><?php echo formatCena($meridlo['aktualni_cena']); ?></strong>
                                 <?php if ($meridlo['rok_posledni_ceny'] && $meridlo['rok_posledni_ceny'] < CURRENT_YEAR): ?>
                                     <br><small style="color: #666;">(vypočteno z roku <?php echo $meridlo['rok_posledni_ceny']; ?>)</small>
+                                <?php elseif ($odchylkaInfo && $odchylkaInfo['je_odchylna']): ?>
+                                    <br><small style="color: #dc3545;">(správně: <?php echo formatCena($odchylkaInfo['vypocitana_cena']); ?> z roku <?php echo $odchylkaInfo['bazovy_rok']; ?>)</small>
                                 <?php endif; ?>
                             </td>
                             <td>
