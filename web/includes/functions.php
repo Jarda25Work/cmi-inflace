@@ -507,11 +507,35 @@ function vypocitejTeoretickouCenu($meridloId, $rok) {
  * @return array ['je_odchylna' => bool, 'vypocitana_cena' => float, 'odchylka_procent' => float]
  */
 function zjistiOdchylkuCeny($meridloId, $rok, $rucniCena) {
+    $pdo = getDbConnection();
+    
     // Získat toleranci z konfigurace
     $tolerance = (float)getKonfigurace('cena_tolerance_procenta', 5);
     
-    // Vypočítat teoretickou cenu
-    $vypocitanaCena = vypocitejTeoretickouCenu($meridloId, $rok);
+    // Najít poslední uloženou cenu PŘED tímto rokem (nezahrnuje aktuální rok)
+    $sql = "SELECT rok, cena FROM ceny_meridel 
+            WHERE meridlo_id = ? AND rok < ? 
+            ORDER BY rok DESC 
+            LIMIT 1";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$meridloId, $rok]);
+    $predchoziCena = $stmt->fetch();
+    
+    if (!$predchoziCena) {
+        // Není z čeho počítat inflaci
+        return [
+            'je_odchylna' => false,
+            'vypocitana_cena' => null,
+            'odchylka_procent' => 0
+        ];
+    }
+    
+    // Vypočítat teoretickou cenu z předchozí uložené ceny pomocí fn_vypocitat_cenu_s_inflaci
+    $sql = "SELECT fn_vypocitat_cenu_s_inflaci(?, ?, ?) as vypocitana_cena";
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$predchoziCena['cena'], $predchoziCena['rok'], $rok]);
+    $result = $stmt->fetch();
+    $vypocitanaCena = $result ? (float)$result['vypocitana_cena'] : null;
     
     if ($vypocitanaCena === null || $vypocitanaCena == 0) {
         return [
@@ -528,7 +552,9 @@ function zjistiOdchylkuCeny($meridloId, $rok, $rucniCena) {
     return [
         'je_odchylna' => $odchylkaProcent > $tolerance,
         'vypocitana_cena' => $vypocitanaCena,
-        'odchylka_procent' => $odchylkaProcent
+        'odchylka_procent' => $odchylkaProcent,
+        'bazova_cena' => $predchoziCena['cena'],
+        'bazovy_rok' => $predchoziCena['rok']
     ];
 }
 
