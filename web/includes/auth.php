@@ -3,6 +3,9 @@
  * Autentizační funkce
  */
 
+// Načti security.php pro logSecurityEvent()
+require_once __DIR__ . '/security.php';
+
 /**
  * Spustí session pokud ještě není spuštěna
  */

@@ -307,11 +307,13 @@ $pageTitle = 'Editace měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_N
         
         <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 1rem; margin-top: 1rem;">
             <?php 
-            // Zjisti poslední dostupný rok inflace
+            // Zjisti rozsah dostupných roků inflace
             $pdo = getDbConnection();
-            $stmtMaxInf = $pdo->query("SELECT MAX(rok) AS max_rok FROM inflace");
-            $aktualniRok = (int)($stmtMaxInf->fetchColumn() ?: CURRENT_YEAR);
-            $roky = range($aktualniRok - 5, $aktualniRok);
+            $stmtInflRoky = $pdo->query("SELECT MIN(rok) AS min_rok, MAX(rok) AS max_rok FROM inflace");
+            $inflRoky = $stmtInflRoky->fetch(PDO::FETCH_ASSOC);
+            $minRok = (int)($inflRoky['min_rok'] ?: CURRENT_YEAR - 10);
+            $maxRok = (int)($inflRoky['max_rok'] ?: CURRENT_YEAR);
+            $roky = range($minRok, $maxRok);
             
             // Přidat editovaný rok pokud není v rozsahu
             if ($editRok && !in_array($editRok, $roky)) {

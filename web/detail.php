@@ -260,13 +260,15 @@ $pageTitle = 'Detail měřidla: ' . $meridlo['evidencni_cislo'] . ' - ' . APP_NA
     // Získat roky kde už jsou ceny uložené
     $ulozeneRoky = array_column($ceny, 'rok');
     
-    // Zjisti poslední dostupný rok inflace
+    // Zjisti rozsah dostupných roků inflace
     $pdo = getDbConnection();
-    $stmtMaxInf = $pdo->query("SELECT MAX(rok) AS max_rok FROM inflace");
-    $maxInflRok = (int)($stmtMaxInf->fetchColumn() ?: CURRENT_YEAR);
+    $stmtInflRoky = $pdo->query("SELECT MIN(rok) AS min_rok, MAX(rok) AS max_rok FROM inflace");
+    $inflRoky = $stmtInflRoky->fetch(PDO::FETCH_ASSOC);
+    $minInflRok = (int)($inflRoky['min_rok'] ?: CURRENT_YEAR - 10);
+    $maxInflRok = (int)($inflRoky['max_rok'] ?: CURRENT_YEAR);
     
-    // Zobrazit vypočítané ceny pro roky 2016 až maxInflRok
-    $vypocitaneCeny = getVypocitaneCeny($meridloId, 2016, $maxInflRok);
+    // Zobrazit vypočítané ceny pro roky od minInflRok až maxInflRok
+    $vypocitaneCeny = getVypocitaneCeny($meridloId, $minInflRok, $maxInflRok);
     ?>
     
     <p class="gov-body-text">
